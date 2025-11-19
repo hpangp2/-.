@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>구술 암기 퀴즈 — 철도교통관제사</title>
+<style>
+:root{--bg:#f3f6fb;--card:#fff;--accent:#2563eb;--bad:#dc2626}
+body{font-family:Inter, system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;margin:0;background:var(--bg);color:#111}
+header{background:linear-gradient(90deg,var(--accent),#60a5fa);color:white;padding:20px 16px}
+.container{max-width:900px;margin:24px auto;padding:16px}
+.card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(2,6,23,0.08)}
+.question{font-weight:600;margin:12px 0;font-size:18px}
+textarea{width:100%;min-height:200px;padding:12px;border-radius:8px;border:1px solid #e6eef8;font-size:15px;resize:vertical;box-sizing:border-box;}
+.btn{display:inline-block;padding:10px 14px;border-radius:10px;background:var(--accent);color:white;border:none;cursor:pointer;font-weight:600}
+.btn.secondary{background:#e2e8f0;color:#0f172a}
+.result{margin-top:16px;background:#fff;padding:12px;border-radius:10px;border:1px solid #e2e8f0;white-space:pre-line;}
+.miss{color:var(--bad);font-weight:700}
+</style>
+</head>
+<body>
+<header>
+<div class="container">
+<h1>구술 암기 퀴즈 — 철도교통관제사</h1>
+</div>
+</header>
+
+<main class="container">
+<div class="card">
+  <div id="quiz">
+    <div class="question" id="questionText">로드 중...</div>
+    <textarea id="userAnswer" placeholder="여기에 암기한 내용을 입력하세요"></textarea>
+    <div style="margin-top:10px;display:flex;gap:10px">
+      <button class="btn" id="checkBtn">채점</button>
+      <button class="btn secondary" id="nextBtn">다음 문제</button>
+      <button class="btn secondary" id="showBtn">정답 보기</button>
+      <div style="margin-left:auto;font-size:14px;color:#475569">
+        <span id="idxNow">0</span> / <span id="idxTotal">0</span>
+      </div>
+    </div>
+    <div id="resultArea" class="result" style="display:none;">
+      <div><strong>정답 :</strong></div>
+      <div id="correctRender"></div>
+      <div><strong>내 답변:</strong></div>
+      <div id="userRender" style="white-space:pre-line;"></div>
+    </div>
+  </div>
+</div>
+</main>
+
+<script>
+const questions = [
+  { q: "관제사가 역장(철도운행안전관리자)으로부터 철도운행안전협의서를 제출 받아 협의해야 할 사항", 
+    a:`열차 지장여부 검토 협의
+차단작업 계획 통보 및 협의
+운전명령 처리된 차단작업·열차사이차단작업 관련 장비이동계획과 작업계획 협의
+열차운행선 안전확보 방안
+역장, 관제사, 기관사와의 연락 방법
+사용중지 대상 철도차량운행시설물` },
+  { q: "관제센터장이 승인한 관제승인의 정의", 
+    a:`*관제승인이란 철도교통관제센터장이 다음에 해당하는 사항을 승인하는 것을 말한다.
+선로작업과 관련한 공사열차 이동
+사고 등 이례사항 발생 시 긴급한 작업 또는 열차서행
+긴급한 사유로 인한 통과열차의 임시정차
+긴급한 사유로 인한 선로작업 취소
+철도교통관제운영규정(고시) 운전정리 주요사항과 임시 운전명령 사항` },
+  { q: "철도운행안전협의 시 철도운행안전관리자와 역장이 상호 협의해야 할 사항", 
+    a:`운전명령 처리된 선로작업계획 및 차단장비 이동계획
+철도차량운행시설물 사용중지 대상 및 열차 지장여부(임시열차 포함)
+운전취급 변경사항 및 열차운행선 안전 확보 방안
+작업관계자와 역장, 관제사, 승무원과의 연락 방법
+병행작업 총괄책임자 지정 및 안전관리 사항
+변경차단작업인 경우 사전 합동점검 결과 미비사항 조치여부(작업책임자로부터 제출된 합동점검 결과 미비사항 조치결과서를 확인)
+기타 필요한 사항` },
+  { q: "일반선 및 연결선에서 선로작업 시 작업시행 승인 절차", 
+    a:`철도운행안전관리자는 역장에게 작업시행 승인 요청
+역장은 관제사에게 작업시행 승인 요청
+관제사는 열차운행상황 등을 확인한 후 승인
+관제사는 승인을 요청한 역장에게 승인내용 통보
+역장은 철도운행안전관리자에게 승인내용 통보
+철도운행안전관리자는 작업책임자 등 작업원에게 승인내용 통보 ->책에는 없음` },
+  { q: "전차선로 근접작업 시 안전관리(작업책임자 업무)", 
+    a:`작업책임자는 전차선로에 근접하여 시행하는 작업의 경우 급전장애와 감전사고 예방을 위하여 다음 각 호의 조치를 취해야 한다.
+전차선로에 지장을 줄 우려가 있거나 전차선로의 급·단전이 필요한 경우 전기안전관리자 배치
+전차선로와 이격거리가 1m 이내인 작업은 전차선로 단전 조치
+이물질 낙하 우려 시 낙하물 방지시설 설치
+필요 시 전차선로 가압부에 절연방호관 설치
+시행부서장은 설치되는 절연방호관은 작업구간과 건설기계 작업 반경 끝지점을 기준으로 10m 더한 길이로 설치하고 규격품을 사용하여 절연방호관의 변형이 없도록 조치하여야 한다.
+전차선로 상부에서 시행하는 작업으로서 작업원, 자재, 공구, 건설기계 등이 전차선로에 직접 접촉 우려가 없으며, 낙하물 방지시설 또는 절연방호관 설치 등의 안전조치를 이행한 경우 전차선로 단전조치를 생략할 수 있다.` },
+  { q: "야간 지장작업에 투입되었던 장비의 유치 및 이동 관련 업무", 
+    a:`관제사는 열차운행선지장작업과 관련하여 장비의 이동을 통제하여야 한다.
+지장작업의 문서열람 및 작업계획의 수립과정에서 관련 장비의 유치역을 확인한다.
+관련 장비의 유치역에서 작업을 관할하는 역까지의 장비이동을 위한 열차번호 및 스케줄을 작성하여 현장 역·소에 통보한다.
+장비의 이동순서는 가급적 작업에 투입되는 순서에 부합하도록 조정한다.
+장비의 이동은 일반열차의 운행에 지장을 받지 않는 범위 내에서 이동할 수 있도록 설정한다.
+장비가 이동되는 동안 현장 역·소의 운전취급 상황과 장비가 이동하는 궤도의 이상 유무를 감시한다.
+지장작업 중에도 장비의 이동상황과 운전취급의 상황을 감시하여야 한다.
+작업이 완료되면 장비를 유치할 역을 확인하고 이동할 열차번호와 스케줄을 작성하여 현장 역·소에 통보한다.` },
+  { q: "철도보호지구에서 작업 중 철도차량 운행과 철도차량운행시설물 보호에 중대한 위험이 예상될 때 지역본부장이 작업책임자에게 작업중지를 요청할 수 있는 사항", 
+    a:`승인되지 않은 임의작업
+지정된 작업책임자, 열차감시원, 전기안전관리자, 건설기계의 작업지휘자 또는 유도자 등이 배치되지 않거나 현장을 이탈한 경우
+관계소속과 일상 작업으로 협의되었으나 철도차량 운행에 지장이 우려되는 경우
+관계소속과 상호 협의된 철도차량운행시설물에 대한 보호조치를 이행하지 않은 경우
+그 밖에 철도시설의 손괴 또는 철도차량의 안전운행을 저해할 우려가 있는 경우` },
+  { q: "용어의 정의", 
+    a:`철도: 여객 또는 화물을 운송하는 데 필요한 철도시설과 철도차량 및 이와 관련된 운영·지원체계가 유기적으로 구성된 운송체계
+선로: 철도차량을 운행하기 위한 궤도와 이를 받치는 노반 또는 공작물로 구성된 시설물
+궤도: 레일, 침목, 도상과 이들의 부속품으로 구성된 시설
+철도보호지구: 철도경계선(가장 바깥쪽 궤도의 끝선)으로부터 30m 이내의 지역
+선로작업: 철도보호지구 작업 중 철도차량의 운행에 지장을 주거나 지장을 줄 우려가 있는 작업으로서 차단작업과 열차사이차단작업으로 구분` },
+  { q: "차단장비번호의 운용", 
+    a:`차단장비번호는 차단장비가 출발하는 역의 역장이 부여하며 구내 작업인 경우에도 부여한다. 다만, 고속선 작업에 투입되는 장비는 관제사가 차단장비번호를 부여한다.
+차단장비번호는 각 장비별로 번호를 부여한다. 다만, 2이상의 장비를 서로 연결하고 관통제동 취급을 하는 경우에는 각각의 장비에 대하여 별도의 번호를 부여하지 않고 1개의 차단장비번호에 의하여 운전할 수 있다.
+차단장비번호를 부여하는 기준은 다음과 같다.
+매일 최초 차단장비번호는 14시를 기준으로 한다.
+차단구간에 최초로 진입하는 차단장비를 ○○역 차단장비 1호로 하고 이후 ○○역 차단장비 2호, 3호 등 순차적으로 익일 14시 전까지 부여하며, ○○역은 차단장비가 출발하는 정거장 역명으로 한다.
+이미 사용한 차단장비번호는 익일 14시 전에는 재차 사용할 수 없다.
+공사열차, 시운전열차를 차단구간 내에 운행할 경우 ○○역 차단장비 00호로 부여하고, 철도운행안전협의서의 장비명에 그 내용을 기록한다.
+역장은 차단장비 운행에 대한 협의사항을 철도운행안전협의서에 기록하여야 한다.` },
+  { q: "열차감시원의 보호구와 휴대품", 
+    a:`안전보호구(안전조끼, 안전모 등) 착용
+인접 정거장과 무선통화가 가능한 무선전화기
+작업시간대 작업구간 운행예정인 열차의 운전시각표
+확성기·경보기 등 작업원 대피를 위한 경보설비
+주간: 적색기, 백색기 / 야간: 적색등, 백색등` },
+  { q: "2이상의 차단장비를 동시에 운행할 때 운전취급", 
+    a:`차단장비간의 거리는 200m이상 확보
+역장은 관계 건널목에 차단장비 운전내용 통보
+각 차단장비는 무선전화기를 휴대하고 운전 중 상호간 위치 및 속도를 확인하는 등 주의력 가지고 운전
+출발역장은 차단장비가 인접 역으로 도착할 때에는 인접역장에게 마지막으로 출발한 차단장비번호를 통보
+차단장비 도착역장은 마지막 차단장비가 완전히 도착한 것을 확인 후 그 구간에 대하여 개통취급` },
+  { q: "종합시험운행 시 안전관리책임자의 업무", 
+    a:`산업안전보건법 등 관련 법령에서 정한 안전조치사항의 점검·확인
+종합시험운행을 실시하기 전의 안전점검 및 종합시험운행 중 안전관리 감독
+종합시험운행에 사용되는 철도차량에 대한 안전 통제
+종합시험운행에 사용되는 안전장비의 점검·확인
+종합시험운행 참여자에 대한 안전교육` },
+  { q: "병행작업 총괄작업책임자 지정", 
+    a:`시행부서장은 2이상의 분야가 합동작업 또는 병행작업을 시행하는 경우 분야별 작업 책임자를 지휘·통제할 수 있는 총괄작업책임자를 지정
+합동작업인 경우 시행부서장이 사전에 지정하여 선로작업계획서에 반영
+병행작업인 경우 철도운행안전협의 시 분야별 작업책임자 간 협의를 통하여 지정하고 역장은 이를 관제사에게 통보
+총괄작업책임자는 분야별 작업 구간·시간·내용·차단장비 운행계획 등을 사전에 확인하여 조정 및 통제를 시행함으로써 합동 작업 또는 병행작업에 따른 각종 안전 사고를 예방
+분야별 작업책임자는 총괄작업책임자가 지정한 작업구역 또는 작업시간을 변경하거나 차단장비를 이동시킬 때에는 사전에 총괄작업책임자에게 보고하고 승인을 받아야 함` },
+  { q: "용어의 정의(관제업무종사자, 선로배분시행자, 영업시운전)", 
+    a:`관제업무종사자: 철도교통의 안전과 질서를 유지하기 위하여 철도차량의 운행을 감시·통제·집중제어하는 업무에 종사하는 자
+선로배분시행자: 선로용량의 배분에 관한 업무를 수행하는 자
+영업시운전: 시설물검증시험이 끝난 후 영업 개시에 대비하기 위하여 열차운행계획에 따른 실제 영업상태를 가정하고 열차운행체계 및 철도종사자의 업무 숙달 등을 점검하는 시험
+시설물검증시험은 해당 철도노선에서 허용되는 최고속도까지 단계적으로 철도차량의 속도를 증가시키면서 철도시설의 안전상태, 철도차량의 운행적합성이나 철도시설물과의 연계성, 철도시설물의 정상 작동 여부 등을 확인·점검` },
+  { q: "지장작업 완료 및 전차선 급전 관련 업무", 
+    a:`관제사는 작업이 완료되었다는 통보를 받으면 작업구간 내 장비 및 차량의 운행이 없는지 DLP 및 L/S를 통하여 확인
+장비 및 차량의 운행 등이 없는 경우 안전하게 장비 및 작업자들이 현장철수를 완료하였는지 확인
+전차선 단전관련 작업은 전차선 급전을 하여도 문제가 없는지 확인
+작업완료시각을 현장 역·소의 운전취급자와 상호 기록하고 역 조작취급(LOCAL)을 CTC취급(CCM, AUTO)으로 전환
+전차선 단전이 되어있는 구간의 현장 역·소 운전취급자로부터 급전 준비가 완료되었음을 확인하여, 관련 내용을 전기운용자에게 통보
+전기운용자로부터 급전이 완료되었다는 통보를 받으면 현장 역·소의 운전취급자에게 급전시각을 통보하고 급전에 따른 주박차량의 기관기동 및 열차의 출고를 지시
+지장작업의 완료 및 전차선 급전 이후 열차운행상황을 감시` },
+  { q: "종합시험운행", 
+    a:`종합시험운행은 철도노선을 새로 건설하거나 기존 노선을 개량하여 운영하려는 철도운영자 등이 정상운행하기 전에 철도시설 및 열차운행체계의 안정성 여부, 정상운행 준비여부를 점검하는 시험으로 시설물검증시험과 영업시운전이 있음
+시설물검증시험은 해당 철도노선에서 허용되는 최고속도까지 단계적으로 철도차량의 속도를 증가시키면서 철도시설의 안전상태, 철도차량의 운행적합성이나 철도시설물과의 연계성, 철도시설물의 정상 작동 여부 등을 확인·점검하는 시험
+영업시운전은 시설물검증시험이 끝난 후 영업 개시에 대비하기 위하여 열차운행계획에 따른 실제 영업상태를 가정하고 열차운행체계 및 철도종사자의 업무 숙달 등을 점검하는 시험` },
+  { q: "종합시험운행계획 수립 시 포함되어야 하는 사항", 
+    a:`종합시험운행의 방법 및 절차
+평가항목 및 평가기준 등
+종합시험운행의 일정
+종합시험운행의 실시 조직 및 소요인원
+종합시험운행에 사용되는 시험기기 및 장비
+종합시험운행을 실시하는 사람에 대한 교육훈련계획
+안전관리조직 및 안전관리계획
+비상대응계획
+그 밖에 종합시험운행의 효율적인 실시와 안전 확보를 위하여 필요한 사항` },
+  { q: "모타카의 적재 및 견인중량", 
+    a:`시행부서장은 모타카 차체에 적재중량과 견인중량을 표기하여야 하며, 중량을 초과하여 적재하거나 운전할 수 없다
+자동연결기와 공기관통제동기를 갖춘 모타카는 침식차(비상차) 또는 화차를 연결하고 운전할 수 있으며, 이때 최대 견인량수는 종별별로 다름
+다른차량을 연결하고 운전할 때에는 운전취급규정에 정한 바와 같이 상호연결하고, 제동시험 등 운전상 이상 없음을 확인한 후 운전한다. 또한 화차를 연결 또는 해방할 때에는 운전취급규정 “차량의 입환”에 준한다
+구배 종별 15톤형 25톤형 45톤형 10‰ 미만 3.4량 5.1량 6.8량 10‰ 이상 1.7량 3.4량 5.1량` }
+];
+
+function normalize(str){
+  return str.replace(/[0-9①-⑳\.\*★☆]/g,'').replace(/\s+/g,'').trim();
+}
+
+let idx = -1;
+function randExceptPrev(){
+  if(questions.length <= 1) return 0;
+  let newIdx;
+  do {
+    newIdx = Math.floor(Math.random() * questions.length);
+  } while(newIdx === idx);
+  return newIdx;
+}
+function loadQuestion(){
+  idx = randExceptPrev();
+  document.getElementById("questionText").textContent = questions[idx].q;
+  document.getElementById("userAnswer").value = "";
+  document.getElementById("idxNow").textContent = idx+1;
+  document.getElementById("idxTotal").textContent = questions.length;
+  document.getElementById("resultArea").style.display="none";
+  document.getElementById("correctRender").textContent = questions[idx].a;
+  document.getElementById("userRender").textContent = "";
+}
+
+function evaluate(){
+  const correctRaw = questions[idx].a;
+  const userRaw = document.getElementById("userAnswer").value;
+
+  const correctWords = correctRaw.split(/\s+/);
+  const userWordsRaw = userRaw.split(/\s+/).filter(v=>v.trim()!=="");
+
+  const correctDisplay = correctWords.map(word=>{
+    const normWord = normalize(word);
+    const found = userWordsRaw.some(uw => normalize(uw) === normWord);
+    return found ? `<span>${word}</span>` : `<span class="miss">${word}</span>`;
+  }).join(' ');
+
+  document.getElementById("correctRender").innerHTML = correctDisplay;
+  document.getElementById("userRender").textContent = userRaw;
+  document.getElementById("resultArea").style.display = "block";
+}
+
+document.getElementById("checkBtn").onclick = evaluate;
+document.getElementById("showBtn").onclick = ()=>{document.getElementById("userAnswer").value = questions[idx].a; evaluate();};
+document.getElementById("nextBtn").onclick = loadQuestion;
+
+loadQuestion();
+</script>
+</body>
+</html>
